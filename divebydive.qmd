@@ -1,0 +1,153 @@
+---
+title: "Dive-by-dive analysis"
+format: 
+  html:
+    toc: true
+editor: visual
+bibliography: references.bib
+---
+
+## Diving physiology in depth
+
+For this week's lecture you read @meir2008 about extreme bradycardia in diving emperor penguins. In today's lab you'll investigate another aspect of the cardio-respiratory system: oxygen content in the blood [@meir2009].
+
+Oxygen may be present in blood as either a dissolved gas or bonded to hemoglobin. Dissolved oxygen is analogous to carbonation in soda - the liquid can only hold so much gas before it bubbles out. Hemoglobin is an iron-rich protein in red blood cells that bonds to oxygen. By binding to oxygen, hemoglobin allows blood to hold many times more oxygen than would be possible as a dissolved gas alone.
+
+During a dive, organs like the heart and brain deplete the oxygen stored in the blood[^1]. In this lab, we'll investigate patterns in both the partial pressure of oxygen (PO~2~) in arterial blood as well as hemoglobin (Hb) saturation.
+
+[^1]: If you recall from lecture, muscles effectively have separate oxygen storage. They rely on their myoglobin (a similar protein to hemoglobin) stores to fuel aerobic respiration. Vasoconstriction (cutting off blood flow) prevents blood from flowing to the muscles and depleting oxygen from exercise.
+
+## Setup
+
+There are two packages you need to install.
+
+```{r}
+#| label: install-pkgs
+#| eval: false
+
+install.packages(c("cowplot", "readxl"))
+
+```
+
+The "cow" in `cowplot` stands for Claus O. Wilke's initials. Wilke is an expert in data visualization, and if you're interested in learning more about making effective data visualizations I strongly recommend [his book](https://clauswilke.com/dataviz/).
+
+Load necessary packages and set the theme.
+
+```{r}
+#| label: setup
+#| message: false
+# setting message to false removes the package load messages, keeping the 
+# output cleaner.
+
+library(cowplot)
+library(readxl)
+library(tidyverse)
+
+theme_set(theme_bw())
+
+```
+
+## Read data
+
+Emperor penguin biologging data has been made available on the Dryad data repository [@ponganis2024]. The file `data/Dive_depth___Hb_saturation_data_2-21-24.xlsx` is an Excel *workbook* containing multiple *worksheets*. This is a slightly more complicated file type than a CSV, so we'll use the `readxl` package to import data.
+
+Examine the sheet "EP01 arterial" and answer the following questions.
+
+**Q1:** What cell range[^2] contains the diving data?
+
+[^2]: Cell ranges in spreadsheet software (including Excel and Google Sheets) are specified with letters for columns and numbers for rows. So range A1:C2 would be the first three columns (A:C) and the first two rows (1:2).
+
+**Q2:** What cell range contains the PO~2~ and Hb data?
+
+**Q3:** What types of sensors collected these data?
+
+**Q4:** Why do you think these data are in two separate tables?
+
+```{r}
+#| label: import-data
+
+```
+
+## Visualize data
+
+Use `cowplot` to visualize depth, PO~2~, and Hb concentration in one figure.
+
+```{r}
+#| label: viz-all
+
+```
+
+**Q5:** What patterns do you notice in the data?
+
+**Q6:** How would you investigate the patterns further?
+
+## Annotate dives
+
+Since we're interested in diving physiology, we need to identify discrete dives for analysis. Though the word "dive" has intuitive meaning, we need to come up with an *unambiguous* definition of the term using the data available to us before we can describe it in code.
+
+**Q7:** What is an *unambiguous* definition of a dive?
+
+### Identify descents
+
+Begin by identifying the starts of dives, where the bird
+
+```{r}
+#| label: ascent-descent
+
+```
+
+### Identify contiguous submerged periods
+
+Start picking out contiguous submerged periods (i.e., deeper than the surface threshold, 0.5 m) by counting the descent terminals.
+
+```{r}
+#| label: continguous
+
+```
+
+### Remove surface periods
+
+Our dive ids still contain surface intervals, which we'll remove by setting the dive id to `NA` when the depth is shallow.
+
+```{r}
+#| label: remove-surface
+
+```
+
+### Identify proper dives
+
+We now have contiguous submerged periods labeled, but some of our "dives" are likely just surface noise. Let's identify dives that meet our criteria (\>1 min, \>5 m).
+
+```{r}
+#| label: proper-dives
+
+```
+
+## Visualize dives
+
+Now that we've annotated our depth data by dive, we can investigate patterns in PO~2~ and Hb saturation during dives. Let's make our analysis easier by writing a function that takes a dive id and data as inputs and returns a ggplot for that dive.
+
+```{r}
+#| label: viz-dive
+
+```
+
+**Q8:** What patterns do you see in the dive-scale data? What becomes apparent now that wasn't before when you responded to Q5?
+
+## Recap
+
+In this lab you conducted a dive-scale analysis of multi-sensor data. Some new skills you learned were:
+
+-   
+
+## Challenge
+
+The challenge for this lab is to contrast the patterns in PO~2~ and Hb saturation depletion across arterial and venous blood. Arterial blood (which we looked at in today's lab) is on it's way to other organs from the heart, transporting oxygen. Venous blood is returning to the heart, having delivered oxygen to the other organs. Each worksheet in the data workbook contains venous profiles, unless it has the word "arterial" in the sheet name.
+
+Use these data to investigate the question:
+
+*How do O~2~* *depletion patterns differ in arterial and venous blood, and do these patterns differ for dives longer than the emperor penguin's aerobic dive limit (5.6 minutes)?*
+
+Lab challenges should be solved in their own Quarto document. They will be assessed according to the *Developing Reproducible Workflows* standards (see the syllabus). Your methods should be clearly described, the code should be readable, and the analysis should be reproducible (i.e., someone else should be able to clone your repo and render your Quarto document).
+
+These are called challenges for a reason - they're going to be difficult! Leave yourself enough time to get stuck and figure out solutions. You are encouraged to come to office hours or set up meetings with your instructor for help.
