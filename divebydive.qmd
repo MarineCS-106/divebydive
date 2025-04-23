@@ -57,14 +57,40 @@ Examine the sheet "EP01 arterial" and answer the following questions.
 
 [^2]: Cell ranges in spreadsheet software (including Excel and Google Sheets) are specified with letters for columns and numbers for rows. So range A1:C2 would be the first three columns (A:C) and the first two rows (1:2).
 
+F6:G14410
+
 **Q2:** What cell range contains the PO~2~ and Hb data?
+
+A5:C2883
 
 **Q3:** What types of sensors collected these data?
 
+PO~2~ and Hb - Intrinsic
+
+Depth - Location
+
 **Q4:** Why do you think these data are in two separate tables?
+
+Two different sampling intervals (5s vs 1s)
 
 ```{r}
 #| label: import-data
+
+depth <- read_excel(
+  "data/Dive_depth___Hb_saturation_data_2-21-24.xlsx",
+  sheet = "EP01 arterial",
+  range = "F5:G14410",
+  col_types = c("date", "numeric")
+) %>% 
+  set_names(c("datetime", "depth_m")) %>% 
+  drop_na()
+
+o2 <- read_excel(
+  "data/Dive_depth___Hb_saturation_data_2-21-24.xlsx",
+  sheet = "EP01 arterial",
+  range = "A5:C2883"
+) %>% 
+  set_names(c("datetime", "po2", "hb_sat"))
 
 ```
 
@@ -74,6 +100,26 @@ Use `cowplot` to visualize depth, PO~2~, and Hb concentration in one figure.
 
 ```{r}
 #| label: viz-all
+
+depth_plot <- ggplot(depth, aes(datetime, depth_m)) +
+  geom_line() +
+  scale_y_reverse() +
+  labs(y = "Depth (m)") +
+  theme(axis.title.x = element_blank())
+
+po2_plot <- ggplot(o2, aes(datetime, po2)) +
+  geom_line() +
+  labs(y = "PO2 (mm Hg)") +
+  theme(axis.title.x = element_blank())
+
+hb_plot <- ggplot(o2, aes(datetime, hb_sat)) +
+  geom_line() +
+  labs(y = "Hb saturation (%)") +
+  theme(axis.title.x = element_blank())
+
+plot_grid(depth_plot, po2_plot, hb_plot,
+          ncol = 1,
+          align = "v")
 
 ```
 
@@ -87,12 +133,27 @@ Since we're interested in diving physiology, we need to identify discrete dives 
 
 **Q7:** What is an *unambiguous* definition of a dive?
 
+> A dive is a contiguous period where the animal's depth is deeper than 0.5 m, lasting at least one minute, and reaching a max depth of at least 5 m.
+
 ### Identify descents
 
 Begin by identifying the starts of dives, where the bird
 
 ```{r}
 #| label: ascent-descent
+
+surface_thr <- 0.5
+
+dives <- depth %>% 
+  mutate(desc_surface = depth_m <= surface_thr &
+           lead(depth_m) > surface_thr)
+
+ggplot(depth, aes(datetime, depth_m)) +
+  geom_line() +
+  geom_point(data = filter(dives, desc_surface), color = "red") +
+  scale_y_reverse() +
+  labs(y = "Depth (m)") +
+  theme(axis.title.x = element_blank())
 
 ```
 
@@ -103,6 +164,17 @@ Start picking out contiguous submerged periods (i.e., deeper than the surface th
 ```{r}
 #| label: continguous
 
+dives <- dives %>% 
+  mutate(dive_id = cumsum(desc_surface))
+
+ggplot(dives, aes(datetime, depth_m)) +
+  geom_line(aes(group = 1, color = factor(dive_id))) +
+  geom_point(data = filter(dives, desc_surface), color = "red") +
+  scale_y_reverse() +
+  labs(y = "Depth (m)") +
+  theme(axis.title.x = element_blank(),
+        legend.position = "none")
+
 ```
 
 ### Remove surface periods
@@ -112,6 +184,8 @@ Our dive ids still contain surface intervals, which we'll remove by setting the 
 ```{r}
 #| label: remove-surface
 
+dives$dive_id[dives$depth_m < surface_thr] <- NA
+
 ```
 
 ### Identify proper dives
@@ -120,6 +194,24 @@ We now have contiguous submerged periods labeled, but some of our "dives" are li
 
 ```{r}
 #| label: proper-dives
+
+dive_summaries <- dives %>% 
+  group_by(dive_id) %>% 
+  summarize(duration_min = as.numeric(max(datetime) - min(datetime), unit = "mins"),
+            max_depth_m = max(depth_m)) %>% 
+  mutate(is_dive = duration_min >= 1 & max_depth_m >= 5)
+
+# Remove dive ids from "surface noise"
+dives <- dives %>% 
+  left_join(dive_summaries, by = "dive_id") %>% 
+  mutate(dive_id = ifelse(is_dive, dive_id, NA))
+
+ggplot(dives, aes(datetime, depth_m)) +
+  geom_line(aes(group = 1, color = factor(dive_id))) +
+  scale_y_reverse() +
+  labs(y = "Depth (m)") +
+  theme(axis.title.x = element_blank(),
+        legend.position = "none")
 
 ```
 
