@@ -222,6 +222,41 @@ Now that we've annotated our depth data by dive, we can investigate patterns in 
 ```{r}
 #| label: viz-dive
 
+plot_dive <- function(id, dives, o2) {
+  # filter data to dive of interest
+  depth_dive <- filter(dives, dive_id == id)
+  dive_start <- min(depth_dive$datetime)
+  dive_end <- max(depth_dive$datetime)
+  o2_dive <- filter(o2, between(datetime, dive_start, dive_end))
+  
+  depth_plot <- ggplot(depth_dive, aes(datetime, depth_m)) +
+    geom_line() +
+    scale_y_reverse() +
+    labs(y = "Depth (m)") +
+    theme(axis.title.x = element_blank())
+  
+  po2_plot <- ggplot(o2_dive, aes(datetime, po2)) +
+    geom_line() +
+    labs(y = "PO2 (mm Hg)") +
+    theme(axis.title.x = element_blank())
+  
+  hb_plot <- ggplot(o2_dive, aes(datetime, hb_sat)) +
+    geom_line() +
+    labs(y = "Hb saturation (%)") +
+    theme(axis.title.x = element_blank())
+  
+  plot_grid(depth_plot, po2_plot, hb_plot, 
+            # arrange the plots in one column
+            ncol = 1,
+            # align the left and right edges
+            align = "v")
+}
+
+dive_ids <- na.omit(unique(dives$dive_id))
+for (i in dive_ids) {
+  print(plot_dive(i, dives, o2))
+}
+
 ```
 
 **Q8:** What patterns do you see in the dive-scale data? What becomes apparent now that wasn't before when you responded to Q5?
